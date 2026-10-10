@@ -1,0 +1,128 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PropertyCategory {
+  VILLA
+  HOTEL
+  HOUSE
+  APARTMENT
+  LAND
+  BOARDING_HOUSE
+}
+
+enum TransactionIntent {
+  RENT
+  SALE
+}
+
+enum PricePeriod {
+  NIGHT
+  MONTH
+  YEAR
+  TOTAL
+}
+
+enum ModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PropertySourceKind {
+  LOCAL
+  STAYAPI_BOOKING
+  STAYAPI_AIRBNB
+  MOCK
+}
+
+enum ContactMethod {
+  WHATSAPP
+  PHONE
+  EMAIL
+}
+
+enum AdminRole {
+  ADMIN
+  MODERATOR
+}
+
+model Property {
+  id                   String              @id @default(cuid())
+  title                String
+  slug                 String              @unique
+  category             PropertyCategory
+  intent               TransactionIntent
+  description          String
+  amenities            String[]            @default([])
+  priceAmount          Decimal             @db.Decimal(14, 2)
+  currency             String              @default("IDR")
+  pricePeriod          PricePeriod?
+  latitude             Decimal             @db.Decimal(10, 7)
+  longitude            Decimal             @db.Decimal(10, 7)
+  locationLabel        String
+  approximateAddress   String
+  city                 String?
+  region               String?
+  country              String              @default("Indonesia")
+  source               PropertySourceKind  @default(LOCAL)
+  sourceRef            String?
+  externalUrl          String?
+  isFixture            Boolean             @default(false)
+  verified             Boolean             @default(false)
+  status               ModerationStatus    @default(PENDING)
+  rejectionReason      String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  publishedAt          DateTime?
+  images               PropertyImage[]
+  contact              ListingContact?
+  events               AnalyticsEvent[]
+
+  @@index([status, intent, category])
+  @@index([source, sourceRef])
+}
+
+model PropertyImage {
+  id            String   @id @default(cuid())
+  propertyId    String
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url           String
+  alt           String
+  sortOrder     Int      @default(0)
+  attribution   String?
+}
+
+model ListingContact {
+  id              String        @id @default(cuid())
+  propertyId      String        @unique
+  property        Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  displayName     String
+  preferredMethod ContactMethod
+  whatsapp        String?
+  phone           String?
+  email           String?
+}
+
+model AdminUser {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         AdminRole @default(ADMIN)
+  createdAt    DateTime  @default(now())
+}
+
+model AnalyticsEvent {
+  id         String    @id @default(cuid())
+  type       String
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  source     String?
+  createdAt  DateTime  @default(now())
+  meta       Json?
+}
